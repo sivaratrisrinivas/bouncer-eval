@@ -20,6 +20,23 @@ python -m src.run --model cheap  --dataset data/cases.jsonl
 python -m src.run --model strong --dataset data/cases.jsonl
 ```
 
+## Demo
+
+A self-contained, dependency-free web demo in `demo/` that shows the eval as a
+results showcase: what it is, the problem, why it matters, and the results —
+one idea per screen, in a light cherry-blossom theme. Start it with:
+
+```bash
+python3 demo/server.py        # http://127.0.0.1:8765
+```
+
+The rules engine **runs live** in the server on every request; the two LLM
+agents replay their recorded decisions from `data/replay/*.json` (committed
+fixtures of the last full Cerebras run — `results/` is gitignored). The page
+labels every agent as live or replayed. Money actions are simulated and
+graded, never executed for real. No API keys, no build step, no network
+dependence.
+
 The LLM adapters call any OpenAI-compatible endpoint using plain stdlib
 urllib, so there are no dependencies. They were tested against Cerebras:
 

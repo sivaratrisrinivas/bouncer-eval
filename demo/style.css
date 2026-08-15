@@ -1,0 +1,331 @@
+/* ============================================================================
+   Bouncer — multi-screen results showcase
+   Light cherry-blossom palette. One deep-rose accent + three status colors
+   that only mean safe / caution / unsafe. Archivo for reading, Space Mono
+   for numbers. No console, no lamps, no hazard stripes. Self-hosted fonts.
+   ========================================================================== */
+
+@font-face {
+  font-family: "Archivo";
+  src: url("fonts/archivo-400-500-600.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Space Mono";
+  src: url("fonts/spacemono-400.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Space Mono";
+  src: url("fonts/spacemono-700.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  --bg: #fdf4f6;
+  --surface: #ffffff;
+  --surface-soft: #fbeef1;
+  --line: #f2d9df;
+  --ink: #3c2a30;
+  --ink-dim: #6d555d;
+  --ink-faint: #7a6068;
+  --accent: #a54160;
+  --accent-soft: #f9e3ea;
+  --good: #1f6f46;
+  --good-soft: #e5f3ec;
+  --caution: #b0631c;
+  --caution-soft: #fbf1e0;
+  --bad: #af3943;
+  --bad-soft: #fbe7e9;
+  --mono: "Space Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(60,42,48,.06), 0 8px 20px rgba(60,42,48,.07);
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1rem;
+  line-height: 1.65;
+  min-height: 100vh;
+}
+
+::selection { background: var(--accent-soft); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: clamp(2.5rem, 6vw, 4.5rem) clamp(1.25rem, 4vw, 2rem) 3rem;
+}
+
+/* ============================================================================
+   Screens
+   ========================================================================== */
+
+.screen { display: none; }
+.screen.is-active { display: block; }
+
+.screen h1 {
+  margin: 0;
+  font-size: 3rem;
+  font-size: clamp(2.4rem, 7vw, 3.2rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.screen h2 {
+  margin: 0 0 0.8rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.screen p {
+  margin: 0 0 0.8rem;
+  color: var(--ink-dim);
+  max-width: 58ch;
+}
+.screen p:last-of-type { margin-bottom: 0; }
+
+.screen strong { color: var(--ink); font-weight: 600; }
+
+.eyebrow {
+  margin: 0 0 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.lede {
+  margin: 1rem 0 1.6rem;
+  font-size: 1.25rem;
+  font-size: clamp(1.05rem, 2.4vw, 1.25rem);
+  line-height: 1.5;
+  color: var(--ink-dim);
+  max-width: 34ch;
+}
+
+/* ============================================================================
+   Problem / Why bullets
+   ========================================================================== */
+
+.ticks {
+  margin: 0.4rem 0 1.1rem;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.ticks li {
+  padding-left: 1.4rem;
+  position: relative;
+  color: var(--ink-dim);
+}
+.ticks li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.punch {
+  margin: 0.4rem 0 0;
+  padding: 1rem 1.1rem;
+  background: var(--accent-soft);
+  border: 1px solid rgba(165,65,96,.25);
+  border-radius: var(--radius);
+  color: var(--ink);
+}
+.punch strong { color: var(--accent); }
+
+/* ============================================================================
+   Navigation
+   ========================================================================== */
+
+.nav {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  margin-top: 1.8rem;
+}
+
+button {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border: none;
+  border-radius: 999px;
+  padding: 0.7rem 1.3rem;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.next {
+  background: var(--accent);
+  color: #fff;
+}
+.next:hover { background: #8f3a55; }
+
+.prev {
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+}
+.prev:hover { background: var(--accent-soft); border-color: rgba(165,65,96,.3); color: var(--accent); }
+
+/* ============================================================================
+   Results
+   ========================================================================== */
+
+.finding {
+  background: var(--accent-soft);
+  border: 1px solid rgba(165,65,96,.25);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  color: var(--ink);
+}
+.finding strong { color: var(--accent); font-weight: 600; }
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.9rem;
+  margin-top: 1.1rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.1rem 1.2rem;
+}
+
+.card-name {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.card-src {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+
+.card-metric {
+  display: block;
+  margin-top: 0.9rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+.card-metric b {
+  display: block;
+  margin-top: 0.1rem;
+  font-family: var(--mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+.card-metric b.bad { color: var(--bad); }
+.card-metric b.good { color: var(--good); }
+.card-metric b.caution { color: var(--caution); }
+
+/* ============================================================================
+   Example case
+   ========================================================================== */
+
+.example {
+  margin-top: 1.4rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.3rem;
+}
+
+.example h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.example p {
+  margin: 0 0 0.8rem;
+  font-size: 0.92rem;
+  color: var(--ink-dim);
+}
+
+.example dl { margin: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.example dl > div { display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 1rem; align-items: baseline; }
+.example dt {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.example dd { margin: 0; font-size: 0.88rem; color: var(--ink-dim); }
+.example .ok { color: var(--good); font-weight: 600; }
+.example .bad { color: var(--bad); font-weight: 600; }
+
+/* ============================================================================
+   Provenance
+   ========================================================================== */
+
+.provenance {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--ink-faint);
+}
+
+/* ============================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 560px) {
+  .cards { grid-template-columns: 1fr; }
+  .example dl > div { grid-template-columns: 1fr; gap: 0.1rem; }
+  .nav { flex-direction: row; justify-content: space-between; }
+}
