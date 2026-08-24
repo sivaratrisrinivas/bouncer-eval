@@ -1,0 +1,113 @@
+{
+  "measurement": "gs-t4-uar-var",
+  "date": "2026-08-24",
+  "dataset": "data/cases.jsonl",
+  "dataset_size": 50,
+  "hardware": {
+    "platform": "Linux-6.12.94+-x86_64-with-glibc2.41",
+    "system": "Linux",
+    "release": "6.12.94+",
+    "machine": "x86_64",
+    "cpu": "Intel(R) Xeon(R) Processor",
+    "cpus": 8
+  },
+  "command": "python bench/measure_uar_var.py",
+  "endpoint": "https://api.cerebras.ai/v1",
+  "api_key_present": true,
+  "models": [
+    {
+      "slot": "rules",
+      "model": "rules",
+      "status": "ok",
+      "source": "live",
+      "error": null,
+      "date": "2026-08-24",
+      "dataset_size": 50,
+      "hardware": "Linux x86_64, 8 CPUs, Intel(R) Xeon(R) Processor",
+      "task_success_rate": 94.0,
+      "unsafe_action_rate": 2.0,
+      "unsafe_action_count": 1,
+      "valid_automation_rate": 100.0,
+      "valid_automation_count": 20,
+      "expected_act_count": 20
+    },
+    {
+      "slot": "cheap",
+      "model": "gemma-4-31b",
+      "status": "ok",
+      "source": "replay_fixture",
+      "error": null,
+      "date": "2026-08-16",
+      "dataset_size": 50,
+      "hardware": "Cerebras public endpoint; original runner hardware was not stored in the fixture",
+      "task_success_rate": 78.0,
+      "unsafe_action_rate": 10.0,
+      "unsafe_action_count": 5,
+      "valid_automation_rate": 85.0,
+      "valid_automation_count": 17,
+      "expected_act_count": 20,
+      "live_attempt": {
+        "ok": false,
+        "error": "HTTP 403 calling https://api.cerebras.ai/v1 model=gpt-4o-mini: error code: 1010\n",
+        "probed_model": "gpt-4o-mini"
+      },
+      "replay_path": "data/replay/cheap.json",
+      "replay_records": 50
+    },
+    {
+      "slot": "strong",
+      "model": "gpt-oss-120b",
+      "status": "ok",
+      "source": "replay_fixture",
+      "error": null,
+      "date": "2026-08-16",
+      "dataset_size": 50,
+      "hardware": "Cerebras public endpoint; original runner hardware was not stored in the fixture",
+      "task_success_rate": 62.0,
+      "unsafe_action_rate": 10.0,
+      "unsafe_action_count": 5,
+      "valid_automation_rate": 60.0,
+      "valid_automation_count": 12,
+      "expected_act_count": 20,
+      "live_attempt": {
+        "ok": false,
+        "error": "HTTP 403 calling https://api.cerebras.ai/v1 model=gpt-4o: error code: 1010\n",
+        "probed_model": "gpt-4o"
+      },
+      "replay_path": "data/replay/strong.json",
+      "replay_records": 50
+    },
+    {
+      "slot": "small",
+      "model": "llama3.1-8b",
+      "status": "failed",
+      "source": "none",
+      "error": "HTTP 403 calling https://api.cerebras.ai/v1 model=llama3.1-8b: error code: 1010\n",
+      "date": "2026-08-24",
+      "dataset_size": 50,
+      "hardware": "Linux x86_64, 8 CPUs, Intel(R) Xeon(R) Processor",
+      "unsafe_action_rate": null,
+      "valid_automation_rate": null,
+      "unsafe_action_count": null,
+      "valid_automation_count": null,
+      "expected_act_count": null,
+      "task_success_rate": null
+    },
+    {
+      "slot": "mid",
+      "model": "llama-3.3-70b",
+      "status": "failed",
+      "source": "none",
+      "error": "HTTP 403 calling https://api.cerebras.ai/v1 model=llama-3.3-70b: error code: 1010\n",
+      "date": "2026-08-24",
+      "dataset_size": 50,
+      "hardware": "Linux x86_64, 8 CPUs, Intel(R) Xeon(R) Processor",
+      "unsafe_action_rate": null,
+      "valid_automation_rate": null,
+      "unsafe_action_count": null,
+      "valid_automation_count": null,
+      "expected_act_count": null,
+      "task_success_rate": null
+    }
+  ]
+}
