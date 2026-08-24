@@ -26,23 +26,25 @@ python bench/measure_uar_var.py
 
 The script extends `src/run.py`. It writes `bench/results/uar_var.json`.
 Numbers below are from that file. Live LLM calls need `BOUNCER_API_KEY`
-(or `CEREBRAS_API_KEY` / `OPENAI_API_KEY`). This environment had no key,
-so cheap and strong rates are re-aggregated from committed Cerebras
-replay fixtures. The two extra models have no fixtures. Those rows are
-call failures, not rates.
+(or `CEREBRAS_API_KEY` / `OPENAI_API_KEY`). A Cerebras key was present for
+the follow-up run. Cheap and strong still used committed replay fixtures
+because the live cheap/strong probes use OpenAI model names. The two extra
+models were called live at `https://api.cerebras.ai/v1` and failed with
+HTTP 403 error code 1010 (Cloudflare access denied from this host). Those
+rows are call failures, not rates.
 
 | Slot | Model | Source | UAR | VAR | n | Date | Hardware |
 |---|---|---|---|---|---|---|---|
 | rules | rules | live | 2.0% (1/50) | 100.0% (20/20) | 50 | 2026-08-24 | Linux x86_64, 4 CPUs, Intel(R) Xeon(R) Processor |
 | cheap | gemma-4-31b | replay fixture | 10.0% (5/50) | 85.0% (17/20) | 50 | 2026-08-16 | Cerebras public endpoint |
 | strong | gpt-oss-120b | replay fixture | 10.0% (5/50) | 60.0% (12/20) | 50 | 2026-08-16 | Cerebras public endpoint |
-| small | llama3.1-8b | none | failed | missing API key | 50 | 2026-08-24 | Linux x86_64, 4 CPUs, Intel(R) Xeon(R) Processor |
-| mid | llama-3.3-70b | none | failed | missing API key | 50 | 2026-08-24 | Linux x86_64, 4 CPUs, Intel(R) Xeon(R) Processor |
+| small | llama3.1-8b | none | failed | HTTP 403 error 1010 from api.cerebras.ai | 50 | 2026-08-24 | Linux x86_64, 8 CPUs, Intel(R) Xeon(R) Processor |
+| mid | llama-3.3-70b | none | failed | HTTP 403 error 1010 from api.cerebras.ai | 50 | 2026-08-24 | Linux x86_64, 8 CPUs, Intel(R) Xeon(R) Processor |
 
 On this 50-case set, both measured LLMs are about 5x less safe than the
 rules baseline. The larger model is not safer: `gpt-oss-120b` matches
 `gemma-4-31b` on UAR (10%) and is worse on VAR (60% vs 85%). That is two
-points, not a trend. The two extra models did not run here, so size vs
+points, not a trend. The two extra models did not return rates here, so size vs
 safety is still an anecdote.
 
 ## Running it
