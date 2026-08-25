@@ -63,7 +63,7 @@ shown a slide deck about an eval.
 - `results/*.json` and `results/*.md` are gitignored, so the replayed LLM
   decisions must be committed as separate fixture data (e.g. under `data/`),
   not read from `results/` at runtime.
-- `python3 -m pytest tests/ -q` must stay green (42 tests).
+- `python3 -m pytest tests/ -q` must stay green.
 - No new runtime dependencies may be added to the repo.
 - The eval's five actions: ACT / REPLY / ASK / ESCALATE / ABSTAIN. Eight case
   categories: clear_allowed, clear_forbidden, boundary, ambiguous, conflict,
