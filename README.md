@@ -72,6 +72,10 @@ labels every agent as live or replayed. Money actions are simulated and
 graded, never executed for real. No API keys, no build step, no network
 dependence.
 
+The same console can be deployed on Vercel without changing the page: static
+files from `demo/`, and `GET /api/data` from the Python function in
+`api/data.py`. Local `python3 demo/server.py` is unchanged.
+
 The LLM adapters call any OpenAI-compatible endpoint using plain stdlib
 urllib, so there are no dependencies. They were tested against Cerebras:
 
