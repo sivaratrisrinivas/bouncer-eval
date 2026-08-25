@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/", "destination": "/demo/index.html" },
+    { "source": "/index.html", "destination": "/demo/index.html" },
+    { "source": "/app.js", "destination": "/demo/app.js" },
+    { "source": "/style.css", "destination": "/demo/style.css" }
+  ],
+  "functions": {
+    "api/data.py": {
+      "includeFiles": "{data/**,src/**,demo/server.py}"
+    }
+  }
+}

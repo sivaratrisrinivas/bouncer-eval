@@ -22,6 +22,8 @@ grader judges them exactly as the eval does.
 Usage:
     python3 demo/server.py            # http://127.0.0.1:8765
     python3 demo/server.py --port 9000
+
+On Vercel the same payload is served by api/data.py; static files come from demo/.
 """
 
 from __future__ import annotations

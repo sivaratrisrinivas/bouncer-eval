@@ -10,7 +10,9 @@ web
 
 Static HTML/CSS/JS frontend + a tiny Python 3 stdlib `http.server` backend that
 runs the eval code directly. No npm, no build step, no dependencies, no API
-keys. Runs on the repo's existing Python 3.12 stdlib-only ethos.
+keys. Runs on the repo's existing Python 3.12 stdlib-only ethos. On Vercel,
+`api/data.py` serves the same `/api/data` payload as a serverless function and
+`vercel.json` maps the `demo/` static files to `/`.
 
 ## Users
 
