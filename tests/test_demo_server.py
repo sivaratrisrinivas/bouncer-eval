@@ -48,6 +48,21 @@ def test_vercel_handler_uses_same_payload_builder():
     assert mod.build_payload is build_payload
 
 
+def test_vercel_rewrites_map_fonts_and_other_demo_static():
+    cfg = json.loads((Path(__file__).resolve().parents[1] / "vercel.json").read_text())
+    rewrites = cfg["rewrites"]
+    assert any(r["source"] == "/" and r["destination"] == "/demo/index.html" for r in rewrites)
+    assert any(
+        r["destination"] in ("/demo/:path", "/demo/:path*", "/demo/$1", "/demo/fonts/:path*")
+        and (
+            "fonts" in r["source"]
+            or ":path" in r["source"]
+            or r["source"] in ("/:path*", "/((?!api/).*)")
+        )
+        for r in rewrites
+    )
+
+
 def test_local_server_serves_static_and_api():
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -66,8 +81,19 @@ def test_local_server_serves_static_and_api():
         assert "fetch(\"/api/data\")" in js
 
         with urlopen(base + "/style.css") as resp:
+            css = resp.read().decode()
             assert resp.status == 200
-            assert resp.read()
+        assert "fonts/archivo-400-500-600.woff2" in css
+
+        for name in (
+            "archivo-400-500-600.woff2",
+            "spacemono-400.woff2",
+            "spacemono-700.woff2",
+        ):
+            with urlopen(base + "/fonts/" + name) as resp:
+                assert resp.status == 200
+                assert resp.headers.get_content_type() == "font/woff2"
+                assert resp.read()
 
         with urlopen(base + "/api/data") as resp:
             assert resp.status == 200
