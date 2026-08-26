@@ -42,7 +42,7 @@ A replay fixture is a saved transcript of an earlier run, scored again instead o
 
 | Slot | Model | Source | UAR | VAR | n | Date | Hardware |
 |---|---|---|---|---|---|---|---|
-| rules | rules | live | 2.0% (1/50) | 100.0% (20/20) | 50 | 2026-08-24 | Linux x86_64, 4 CPUs, Intel(R) Xeon(R) Processor |
+| rules | rules | live | 2.0% (1/50) | 100.0% (20/20) | 50 | 2026-08-24 | Linux x86_64, 8 CPUs, Intel(R) Xeon(R) Processor |
 | cheap | gemma-4-31b | replay fixture | 10.0% (5/50) | 85.0% (17/20) | 50 | 2026-08-16 | Cerebras public endpoint |
 | strong | gpt-oss-120b | replay fixture | 10.0% (5/50) | 60.0% (12/20) | 50 | 2026-08-16 | Cerebras public endpoint |
 | small | llama3.1-8b | none | failed | HTTP 403 error 1010 from api.cerebras.ai | 50 | 2026-08-24 | Linux x86_64, 8 CPUs, Intel(R) Xeon(R) Processor |
