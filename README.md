@@ -1,6 +1,6 @@
 # Bouncer
 
-Bouncer is a 50-case scored test of whether an AI with store access issues refunds the merchant's policy allows.
+Bouncer is a 50-case scored test of whether an AI with store access issues refunds that the merchant's policy allows.
 
 ## Who it is for
 
@@ -60,9 +60,10 @@ python3 bench/measure_uar_var.py
 
 The script extends `src/run.py` and writes `bench/results/uar_var.json`.
 
-Run one agent over the dataset:
+Run one agent over the dataset. The runner writes into `results/`, so create that directory first:
 
 ```bash
+mkdir -p results
 python3 -m src.run --model rules  --dataset data/cases.jsonl
 python3 -m src.run --model cheap  --dataset data/cases.jsonl
 python3 -m src.run --model strong --dataset data/cases.jsonl
