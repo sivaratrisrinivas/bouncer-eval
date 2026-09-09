@@ -1,8 +1,7 @@
 # Bouncer
 
-A small eval I built for the Amboras AI Engineer application. It answers a
-simple question: when should an AI agent with write access to a store be
-allowed to touch money?
+Bouncer is a small eval of when an AI agent with write access to a store
+should be allowed to touch money.
 
 An agent gets a merchant's refund policy, the current order and customer
 records, and a customer message. It has to pick one of five actions:
@@ -56,6 +55,8 @@ python -m src.run --model strong --dataset data/cases.jsonl
 ```
 
 ## Demo
+
+The live demo is at https://bouncer-eval.vercel.app.
 
 A self-contained, dependency-free web demo in `demo/` that shows the eval as a
 results showcase: what it is, the problem, why it matters, and the results —
