@@ -23,6 +23,11 @@ Usage:
     python3 demo/server.py            # http://127.0.0.1:8765
     python3 demo/server.py --port 9000
 
+Tracing is off by default. To write an OTLP JSON file for GET /api/data:
+
+    BOUNCER_OTEL_FILE=docs/traces/demo-api-data.otlp.json python3 demo/server.py
+    python3 -m src.otel               # one-shot capture of a real local GET
+
 On Vercel the same payload is served by api/data.py; static files come from demo/.
 """
 
@@ -40,6 +45,7 @@ from typing import Any, Dict
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from src.otel import SPAN_KIND_SERVER, flush, start_span  # noqa: E402
 from src.run import run_one  # noqa: E402  (repo root on sys.path)
 from src.schema import CATEGORIES, EXPECTED_ACTIONS, TOOLS  # noqa: E402
 
@@ -90,7 +96,8 @@ def _replay(agent: str) -> Dict[str, Any]:
 
 
 def _rules_live() -> Dict[str, Any]:
-    run = run_one("rules", str(CASES_PATH))
+    with start_span("demo.rules_live", attributes={"bouncer.model": "rules"}):
+        run = run_one("rules", str(CASES_PATH))
     return {
         "model": run["model"],
         "summary": run["summary"],
@@ -99,57 +106,68 @@ def _rules_live() -> Dict[str, Any]:
 
 
 def build_payload() -> Dict[str, Any]:
-    rules = _rules_live()
-    strong = _replay("strong")
-    cheap = _replay("cheap")
+    with start_span("demo.build_payload"):
+        with start_span("demo.load_cases") as span:
+            cases = _cases()
+            span.set_attribute("bouncer.n_cases", len(cases))
+        with start_span("demo.load_policies") as span:
+            policies = _policies()
+            span.set_attribute("bouncer.n_policies", len(policies))
+        rules = _rules_live()
+        with start_span("demo.replay_strong", attributes={"bouncer.model": "strong"}):
+            strong = _replay("strong")
+        with start_span("demo.replay_cheap", attributes={"bouncer.model": "cheap"}):
+            cheap = _replay("cheap")
 
-    agents = [
-        {
-            "id": "rules",
-            "model": rules["model"],
-            "label": "Rules",
-            "sub": "Baseline 0 — deterministic engine",
-            "source": "live",
-            "source_note": "RUN LIVE — the policy engine executed these decisions in this server.",
-            "summary": rules["summary"],
-        },
-        {
-            "id": "strong",
-            "model": strong["model"],
-            "label": "gpt-oss-120b",
-            "sub": "strong LLM · direct autonomy",
-            "source": "replay",
-            "source_note": "REPLAYED — recorded Cerebras run, committed in data/replay.",
-            "summary": strong["summary"],
-        },
-        {
-            "id": "cheap",
-            "model": cheap["model"],
-            "label": "gemma-4-31b",
-            "sub": "cheap LLM · direct autonomy",
-            "source": "replay",
-            "source_note": "REPLAYED — recorded Cerebras run, committed in data/replay.",
-            "summary": cheap["summary"],
-        },
-    ]
+        agents = [
+            {
+                "id": "rules",
+                "model": rules["model"],
+                "label": "Rules",
+                "sub": "Baseline 0 — deterministic engine",
+                "source": "live",
+                "source_note": "RUN LIVE — the policy engine executed these decisions in this server.",
+                "summary": rules["summary"],
+            },
+            {
+                "id": "strong",
+                "model": strong["model"],
+                "label": "gpt-oss-120b",
+                "sub": "strong LLM · direct autonomy",
+                "source": "replay",
+                "source_note": "REPLAYED — recorded Cerebras run, committed in data/replay.",
+                "summary": strong["summary"],
+            },
+            {
+                "id": "cheap",
+                "model": cheap["model"],
+                "label": "gemma-4-31b",
+                "sub": "cheap LLM · direct autonomy",
+                "source": "replay",
+                "source_note": "REPLAYED — recorded Cerebras run, committed in data/replay.",
+                "summary": cheap["summary"],
+            },
+        ]
 
-    return {
-        "generated_at": time.strftime("%Y-%m-%d %H:%M:%S %Z"),
-        "n_cases": len(_cases()),
-        "cases": _cases(),
-        "policies": _policies(),
-        "catalog": {
-            "categories": CATEGORIES,
-            "expected_actions": EXPECTED_ACTIONS,
-            "tools": TOOLS,
-        },
-        "agents": agents,
-        "results": {
-            "rules": rules["results"],
-            "strong": strong["results"],
-            "cheap": cheap["results"],
-        },
-    }
+        with start_span("demo.assemble"):
+            payload = {
+                "generated_at": time.strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "n_cases": len(cases),
+                "cases": cases,
+                "policies": policies,
+                "catalog": {
+                    "categories": CATEGORIES,
+                    "expected_actions": EXPECTED_ACTIONS,
+                    "tools": TOOLS,
+                },
+                "agents": agents,
+                "results": {
+                    "rules": rules["results"],
+                    "strong": strong["results"],
+                    "cheap": cheap["results"],
+                },
+            }
+        return payload
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -157,7 +175,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 (stdlib API)
         if self.path == "/api/data":
-            self._send_json(build_payload())
+            try:
+                with start_span(
+                    "GET /api/data",
+                    kind=SPAN_KIND_SERVER,
+                    attributes={"http.request.method": "GET", "http.route": "/api/data"},
+                ):
+                    self._send_json(build_payload())
+            finally:
+                flush()
             return
         if self.path == "/favicon.ico":
             self.send_response(204)

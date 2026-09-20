@@ -77,6 +77,22 @@ The same console can be deployed on Vercel without changing the page: static
 files from `demo/`, and `GET /api/data` from the Python function in
 `api/data.py`. Local `python3 demo/server.py` is unchanged.
 
+## Tracing
+
+`GET /api/data` (local demo and the Vercel function) records OpenTelemetry
+spans for the live rules eval and the LLM replay steps. Tracing is off unless
+you set `BOUNCER_OTEL_FILE=...` or `BOUNCER_OTEL=1` (which defaults the file
+path). The hosted demo and deterministic grading stay the same. No Langfuse
+cloud key is required.
+
+```bash
+python3 -m src.otel
+```
+
+That issues one real local `GET /api/data` and writes OTLP JSON to
+`docs/traces/demo-api-data.otlp.json` (a captured example is committed there).
+Details: `docs/otel.md`.
+
 The LLM adapters call any OpenAI-compatible endpoint using plain stdlib
 urllib, so there are no dependencies. They were tested against Cerebras:
 
@@ -115,6 +131,7 @@ The files:
 | `src/metrics.py` | the three headline metrics |
 | `src/adapters.py` | rules / cheap / strong adapters (LLMs run a tool loop) |
 | `src/run.py` | CLI runner, summary table, error report |
+| `src/otel.py` | optional OpenTelemetry file exporter for `GET /api/data` |
 | `data/cases.jsonl` | 50 cases across the categories in the eval |
 
 ## Metrics
