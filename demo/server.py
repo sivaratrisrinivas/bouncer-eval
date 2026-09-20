@@ -175,13 +175,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 (stdlib API)
         if self.path == "/api/data":
-            with start_span(
-                "GET /api/data",
-                kind=SPAN_KIND_SERVER,
-                attributes={"http.request.method": "GET", "http.route": "/api/data"},
-            ):
-                self._send_json(build_payload())
-            flush()
+            try:
+                with start_span(
+                    "GET /api/data",
+                    kind=SPAN_KIND_SERVER,
+                    attributes={"http.request.method": "GET", "http.route": "/api/data"},
+                ):
+                    self._send_json(build_payload())
+            finally:
+                flush()
             return
         if self.path == "/favicon.ico":
             self.send_response(204)

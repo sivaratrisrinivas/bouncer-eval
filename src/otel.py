@@ -2,8 +2,11 @@
 
 Stdlib only. No collector, no API keys. When tracing is off (the default),
 `start_span` is a no-op so the Vercel demo and deterministic grading stay
-unchanged. When `BOUNCER_OTEL_FILE` is set, finished spans are written as
-OTLP JSON (the same shape an OTLP/HTTP JSON exporter would POST).
+unchanged. Enable with `BOUNCER_OTEL_FILE` (explicit path) or `BOUNCER_OTEL=1`
+(defaults the path to docs/traces/demo-api-data.otlp.json). Finished spans
+are written as OTLP JSON (the same shape an OTLP/HTTP JSON exporter would
+POST). Each `flush()` is one trace snapshot: it writes the current buffer
+and then clears it.
 
 Usage:
     python3 -m src.otel
@@ -154,7 +157,9 @@ class Tracer:
             return list(self._spans)
 
     def export_otlp(self) -> Dict[str, Any]:
-        spans = [s.to_otlp() for s in self.spans()]
+        return self._otlp_doc(self.spans())
+
+    def _otlp_doc(self, spans: List[Span]) -> Dict[str, Any]:
         return {
             "resourceSpans": [
                 {
@@ -174,7 +179,7 @@ class Tracer:
                                 "name": self.scope_name,
                                 "version": self.scope_version,
                             },
-                            "spans": spans,
+                            "spans": [s.to_otlp() for s in spans],
                         }
                     ],
                 }
@@ -182,11 +187,20 @@ class Tracer:
         }
 
     def flush(self) -> Optional[Path]:
+        """Write the current buffer as one OTLP JSON snapshot, then clear it.
+
+        One call is one `resourceSpans` document (typically one GET /api/data
+        trace). Clearing keeps a long-running `demo/server.py` from growing
+        without bound or merging multiple traceIds into a single file.
+        """
         if not self.enabled or self.file_path is None:
             return None
         path = self.file_path
+        with self._lock:
+            snapshot = list(self._spans)
+            self._spans.clear()
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(self.export_otlp(), indent=2) + "\n", encoding="utf-8")
+        path.write_text(json.dumps(self._otlp_doc(snapshot), indent=2) + "\n", encoding="utf-8")
         return path
 
 
@@ -304,8 +318,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     reset()
     configure(file_path=args.out, enabled=True)
     _capture_via_http(args.host, args.port)
-    path = flush()
-    names = [s.name for s in exported_spans()]
+    path = Path(args.out)
+    # Handler.flush() already wrote one snapshot and cleared the buffer.
+    if not path.exists():
+        flush()
+    names: List[str] = []
+    if path.exists():
+        data = json.loads(path.read_text(encoding="utf-8"))
+        names = [s["name"] for s in data["resourceSpans"][0]["scopeSpans"][0]["spans"]]
     print(f"spans ({len(names)}): {names}")
     print(f"trace -> {path}")
     return 0

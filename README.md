@@ -81,8 +81,9 @@ files from `demo/`, and `GET /api/data` from the Python function in
 
 `GET /api/data` (local demo and the Vercel function) records OpenTelemetry
 spans for the live rules eval and the LLM replay steps. Tracing is off unless
-you set an export path, so the hosted demo and deterministic grading stay the
-same. No Langfuse cloud key is required.
+you set `BOUNCER_OTEL_FILE=...` or `BOUNCER_OTEL=1` (which defaults the file
+path). The hosted demo and deterministic grading stay the same. No Langfuse
+cloud key is required.
 
 ```bash
 python3 -m src.otel

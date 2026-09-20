@@ -5,8 +5,10 @@ collector to configure. The live demo path — `GET /api/data`, used by both
 `demo/server.py` and the Vercel function `api/data.py` — records
 OpenTelemetry spans and can dump them as OTLP JSON.
 
-Tracing is **off** unless an export path is set. The Vercel demo and
-deterministic grading do not change.
+Tracing is **off** unless `BOUNCER_OTEL_FILE` is set or `BOUNCER_OTEL=1`
+(which defaults the file path). The Vercel demo and deterministic grading
+do not change. Each `flush()` writes one trace snapshot (one
+`resourceSpans` document) and then clears the in-memory buffer.
 
 ## Capture one real local request
 

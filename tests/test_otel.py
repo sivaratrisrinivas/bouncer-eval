@@ -29,10 +29,6 @@ def teardown_function(_function):
     reset()
 
 
-def _span_names():
-    return [s.name for s in exported_spans()]
-
-
 def test_start_span_is_noop_when_disabled(tmp_path):
     out = tmp_path / "trace.json"
     with start_span("should-not-record"):
@@ -52,8 +48,11 @@ def test_build_payload_emits_named_eval_and_replay_spans(tmp_path):
     assert payload["n_cases"] == 50
     assert payload["agents"][0]["source"] == "live"
     assert payload["agents"][1]["source"] == "replay"
+    assert exported_spans() == []
 
-    names = set(_span_names())
+    data = json.loads(out.read_text(encoding="utf-8"))
+    spans = data["resourceSpans"][0]["scopeSpans"][0]["spans"]
+    names = {s["name"] for s in spans}
     for expected in (
         "demo.build_payload",
         "demo.load_cases",
@@ -69,10 +68,6 @@ def test_build_payload_emits_named_eval_and_replay_spans(tmp_path):
         "demo.assemble",
     ):
         assert expected in names
-
-    data = json.loads(out.read_text(encoding="utf-8"))
-    spans = data["resourceSpans"][0]["scopeSpans"][0]["spans"]
-    assert {s["name"] for s in spans} == names
     assert len({s["traceId"] for s in spans}) == 1
 
 
@@ -148,3 +143,53 @@ def test_python_m_src_otel_captures_real_http_trace(tmp_path):
     assert "GET /api/data" in names
     assert "eval.run_one" in names
     assert len(names) >= 13
+
+
+def test_flush_clears_buffer_so_snapshots_do_not_merge(tmp_path):
+    out = tmp_path / "trace.json"
+    configure(file_path=out, enabled=True)
+    with start_span("first"):
+        pass
+    flush()
+    assert exported_spans() == []
+    first_ids = {
+        s["traceId"]
+        for s in json.loads(out.read_text(encoding="utf-8"))["resourceSpans"][0]["scopeSpans"][0]["spans"]
+    }
+    with start_span("second"):
+        pass
+    flush()
+    assert exported_spans() == []
+    spans = json.loads(out.read_text(encoding="utf-8"))["resourceSpans"][0]["scopeSpans"][0]["spans"]
+    names = [s["name"] for s in spans]
+    assert names == ["second"]
+    assert {s["traceId"] for s in spans} != first_ids
+
+
+def test_http_flush_on_error_exports_error_span(tmp_path, monkeypatch):
+    out = tmp_path / "error.otlp.json"
+    configure(file_path=out, enabled=True)
+
+    def boom():
+        raise RuntimeError("payload failed")
+
+    monkeypatch.setattr("demo.server.build_payload", boom)
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    base = "http://127.0.0.1:%d" % httpd.server_address[1]
+    try:
+        try:
+            urlopen(base + "/api/data")
+        except Exception:
+            pass
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=2)
+
+    spans = json.loads(out.read_text(encoding="utf-8"))["resourceSpans"][0]["scopeSpans"][0]["spans"]
+    by_name = {s["name"]: s for s in spans}
+    assert "GET /api/data" in by_name
+    assert by_name["GET /api/data"]["status"]["code"] == 2
+    assert by_name["GET /api/data"]["status"].get("message") == "RuntimeError"
