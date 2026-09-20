@@ -166,6 +166,51 @@ def test_flush_clears_buffer_so_snapshots_do_not_merge(tmp_path):
     assert {s["traceId"] for s in spans} != first_ids
 
 
+def test_flush_keeps_buffer_on_write_error_and_does_not_suppress(tmp_path):
+    blocker = tmp_path / "notdir"
+    blocker.write_text("x", encoding="utf-8")
+    configure(file_path=blocker / "trace.json", enabled=True)
+    caught = None
+    try:
+        try:
+            with start_span("kept"):
+                raise RuntimeError("payload failed")
+        finally:
+            assert flush() is None
+    except RuntimeError as exc:
+        caught = exc
+    assert caught is not None
+    assert str(caught) == "payload failed"
+    assert [s.name for s in exported_spans()] == ["kept"]
+
+    ok = tmp_path / "retry.json"
+    configure(file_path=ok, enabled=True)
+    path = flush()
+    assert path == ok
+    names = [s["name"] for s in json.loads(ok.read_text(encoding="utf-8"))["resourceSpans"][0]["scopeSpans"][0]["spans"]]
+    assert names == ["kept"]
+    assert exported_spans() == []
+
+
+def test_concurrent_requests_do_not_share_span_buffers(tmp_path):
+    configure(file_path=tmp_path / "trace.json", enabled=True)
+    barrier = threading.Barrier(2)
+    seen: dict[str, list[str]] = {}
+
+    def worker(name: str) -> None:
+        with start_span(name):
+            barrier.wait()
+        seen[name] = [s.name for s in exported_spans()]
+
+    threads = [threading.Thread(target=worker, args=(name,)) for name in ("a", "b")]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=5)
+    assert seen["a"] == ["a"]
+    assert seen["b"] == ["b"]
+
+
 def test_http_flush_on_error_exports_error_span(tmp_path, monkeypatch):
     out = tmp_path / "error.otlp.json"
     configure(file_path=out, enabled=True)

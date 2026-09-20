@@ -4,7 +4,8 @@ Same payload as demo/server.py: rules run live via src.run.run_one("rules");
 LLM agents replay data/replay/*.json. Stdlib only. No API keys.
 
 GET /api/data is instrumented with OpenTelemetry-compatible spans. Export is
-off unless BOUNCER_OTEL_FILE is set, so the Vercel demo is unchanged.
+off unless BOUNCER_OTEL_FILE is set or BOUNCER_OTEL=1, so the Vercel demo is
+unchanged.
 """
 
 from __future__ import annotations

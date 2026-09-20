@@ -5,8 +5,8 @@ Stdlib only. No collector, no API keys. When tracing is off (the default),
 unchanged. Enable with `BOUNCER_OTEL_FILE` (explicit path) or `BOUNCER_OTEL=1`
 (defaults the path to docs/traces/demo-api-data.otlp.json). Finished spans
 are written as OTLP JSON (the same shape an OTLP/HTTP JSON exporter would
-POST). Each `flush()` is one trace snapshot: it writes the current buffer
-and then clears it.
+POST). Each `flush()` is one trace snapshot: it writes the current request
+buffer and clears that buffer only after the write succeeds.
 
 Usage:
     python3 -m src.otel
@@ -39,6 +39,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TRACE_PATH = ROOT / "docs" / "traces" / "demo-api-data.otlp.json"
 
 _current: ContextVar[Optional["Span"]] = ContextVar("bouncer_otel_span", default=None)
+_request_buffer: ContextVar[Optional[List["Span"]]] = ContextVar("bouncer_otel_buffer", default=None)
 
 
 def _hex_id(n_bytes: int) -> str:
@@ -124,7 +125,7 @@ class Tracer:
         self.scope_name = "bouncer.demo"
         self.scope_version = "0.1"
         self._spans: List[Span] = []
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     def configure(
         self,
@@ -145,16 +146,27 @@ class Tracer:
     def reset(self) -> None:
         with self._lock:
             self._spans.clear()
+            buf = _request_buffer.get()
+            if buf is not None:
+                buf.clear()
         self.enabled = False
         self.file_path = None
 
+    def begin_request(self) -> None:
+        with self._lock:
+            _request_buffer.set([])
+
+    def _buffer(self) -> List[Span]:
+        buf = _request_buffer.get()
+        return buf if buf is not None else self._spans
+
     def record(self, span: Span) -> None:
         with self._lock:
-            self._spans.append(span)
+            self._buffer().append(span)
 
     def spans(self) -> List[Span]:
         with self._lock:
-            return list(self._spans)
+            return list(self._buffer())
 
     def export_otlp(self) -> Dict[str, Any]:
         return self._otlp_doc(self.spans())
@@ -187,20 +199,30 @@ class Tracer:
         }
 
     def flush(self) -> Optional[Path]:
-        """Write the current buffer as one OTLP JSON snapshot, then clear it.
+        """Write the current request buffer as one OTLP JSON snapshot.
 
         One call is one `resourceSpans` document (typically one GET /api/data
-        trace). Clearing keeps a long-running `demo/server.py` from growing
-        without bound or merging multiple traceIds into a single file.
+        trace). The in-memory buffer is cleared only after the write succeeds,
+        so a mkdir/write failure keeps spans for a retry. I/O errors are logged
+        and swallowed so a handler `finally: flush()` cannot suppress the
+        original request exception.
         """
         if not self.enabled or self.file_path is None:
             return None
         path = self.file_path
         with self._lock:
-            snapshot = list(self._spans)
-            self._spans.clear()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(self._otlp_doc(snapshot), indent=2) + "\n", encoding="utf-8")
+            target = self._buffer()
+            snapshot = list(target)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(self._otlp_doc(snapshot), indent=2) + "\n", encoding="utf-8")
+        except OSError as exc:
+            sys.stderr.write("bouncer otel: failed to write %s: %s\n" % (path, exc))
+            return None
+        with self._lock:
+            target.clear()
+            if _request_buffer.get() is target:
+                _request_buffer.set(None)
         return path
 
 
@@ -219,6 +241,8 @@ def reset() -> None:
     _tracer.reset()
     token = _current.set(None)
     _current.reset(token)
+    buf_token = _request_buffer.set(None)
+    _request_buffer.reset(buf_token)
 
 
 def flush() -> Optional[Path]:
@@ -244,6 +268,7 @@ def start_span(
     if parent is None:
         trace_id = _hex_id(16)
         parent_span_id = ""
+        _tracer.begin_request()
     else:
         trace_id = parent.trace_id
         parent_span_id = parent.span_id
