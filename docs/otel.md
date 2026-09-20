@@ -8,7 +8,8 @@ OpenTelemetry spans and can dump them as OTLP JSON.
 Tracing is **off** unless `BOUNCER_OTEL_FILE` is set or `BOUNCER_OTEL=1`
 (which defaults the file path). The Vercel demo and deterministic grading
 do not change. Each `flush()` writes one trace snapshot (one
-`resourceSpans` document) and then clears the in-memory buffer.
+`resourceSpans` document) and clears the in-memory buffer only after a
+successful write. On `OSError` (mkdir/write failure) the buffer is kept.
 
 ## Capture one real local request
 

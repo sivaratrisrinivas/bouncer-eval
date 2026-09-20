@@ -210,16 +210,24 @@ class Tracer:
         if not self.enabled or self.file_path is None:
             return None
         path = self.file_path
+        tmp: Optional[Path] = None
         with self._lock:
             target = self._buffer()
             snapshot = list(target)
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps(self._otlp_doc(snapshot), indent=2) + "\n", encoding="utf-8")
-        except OSError as exc:
-            sys.stderr.write("bouncer otel: failed to write %s: %s\n" % (path, exc))
-            return None
-        with self._lock:
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = path.with_name("%s.%s.tmp" % (path.name, _hex_id(8)))
+                tmp.write_text(json.dumps(self._otlp_doc(snapshot), indent=2) + "\n", encoding="utf-8")
+                os.replace(tmp, path)
+                tmp = None
+            except OSError as exc:
+                if tmp is not None:
+                    try:
+                        tmp.unlink()
+                    except OSError:
+                        pass
+                sys.stderr.write("bouncer otel: failed to write %s: %s\n" % (path, exc))
+                return None
             target.clear()
             if _request_buffer.get() is target:
                 _request_buffer.set(None)
@@ -239,10 +247,8 @@ def configure(
 
 def reset() -> None:
     _tracer.reset()
-    token = _current.set(None)
-    _current.reset(token)
-    buf_token = _request_buffer.set(None)
-    _request_buffer.reset(buf_token)
+    _current.set(None)
+    _request_buffer.set(None)
 
 
 def flush() -> Optional[Path]:
