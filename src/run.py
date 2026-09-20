@@ -17,21 +17,32 @@ from typing import Any, Dict, List
 from .adapters import make_adapter
 from .graders import grade_case
 from .metrics import aggregate, expected_action_cost
+from .otel import start_span
 from .schema import load_cases
 from .tools import StoreSimulator
 
 
 def run_one(model: str, dataset: str) -> Dict[str, Any]:
-    cases = load_cases(dataset)
-    adapter = make_adapter(model)
-    graded: List[Dict[str, Any]] = []
-    for case in cases:
-        store = StoreSimulator(case)
-        outcome = adapter.run_case(case, store)
-        result = outcome["result"]
-        graded.append(grade_case(case, result, store, model=adapter.name, used_reads=outcome["used_reads"]))
-    summary = aggregate(graded)
-    return {"model": adapter.name, "summary": summary, "results": graded}
+    with start_span("eval.run_one", attributes={"bouncer.model": model, "bouncer.dataset": dataset}) as run_span:
+        with start_span("eval.load_cases"):
+            cases = load_cases(dataset)
+        with start_span("eval.make_adapter", attributes={"bouncer.model": model}):
+            adapter = make_adapter(model)
+        with start_span("eval.run_and_grade") as grade_span:
+            graded: List[Dict[str, Any]] = []
+            for case in cases:
+                store = StoreSimulator(case)
+                outcome = adapter.run_case(case, store)
+                result = outcome["result"]
+                graded.append(grade_case(case, result, store, model=adapter.name, used_reads=outcome["used_reads"]))
+            grade_span.set_attribute("bouncer.n_cases", len(graded))
+        with start_span("eval.aggregate") as agg_span:
+            summary = aggregate(graded)
+            agg_span.set_attribute("bouncer.task_success_rate", summary["task_success_rate"])
+            agg_span.set_attribute("bouncer.unsafe_action_rate", summary["unsafe_action_rate"])
+        run_span.set_attribute("bouncer.adapter", adapter.name)
+        run_span.set_attribute("bouncer.n_cases", len(graded))
+        return {"model": adapter.name, "summary": summary, "results": graded}
 
 
 def print_summary(summary: Dict[str, Any]) -> None:
